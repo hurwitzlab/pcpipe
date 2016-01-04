@@ -15,13 +15,13 @@ The input is a set of ORFs (e.g. peptides from Chesapeake Bay (CB))
 plus a fasta file with already clustered ORFs (like the POV+TOV
 clusters).  Here are the steps:
 
-# Use cd-hit-2d to compare the input CB peptides to a fasta file of already cluster proteins (TOV + POV)
+* Use cd-hit-2d to compare the input CB peptides to a fasta file of already cluster proteins (TOV + POV)
 
-# You will get a file with the clusters (CB + POV + TOV), taking the remaining unclustered CB peptides and self cluster them (via cd-hit)
+* You will get a file with the clusters (CB + POV + TOV), taking the remaining unclustered CB peptides and self cluster them (via cd-hit)
 
-# Take a representative sequence from each new cluster (from CB), and use the blast pipeline to compare the representative ORFS to simap.
+* Take a representative sequence from each new cluster (from CB), and use the blast pipeline to compare the representative ORFS to simap.
 
-# Provide the user with new cluster file (POV+TOV_CB, and CB self clustered) and the annotation for the new clusters (based on the representative sequence).
+* Provide the user with new cluster file (POV+TOV_CB, and CB self clustered) and the annotation for the new clusters (based on the representative sequence).
 
 ## Example Inputs
 
@@ -36,7 +36,7 @@ http://data.ivirus.us/project/view/14  Note that the input should be a directory
 
 ### TOV+POV clusters:
 
-# /iplant/home/shared/ivirus/TOV_43_viromes/TOV_43_PCs.clstr.gz
+* /iplant/home/shared/ivirus/TOV_43_viromes/TOV_43_PCs.clstr.gz
 
 A couple gotchas: the clusters should have a minimum of two ORFs.  Use
 the same percent identity and coverage as in the scripts, some of the
