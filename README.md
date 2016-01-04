@@ -27,7 +27,9 @@ clusters).  Here are the steps:
 
 ### CB Peptides
 
-http://data.ivirus.us/project/view/14  Note that the input should be a directory where you can have multiple peptide files, for a test you can use the Peptides and Read_pep from this dataset)
+* http://data.ivirus.us/project/view/14  
+
+Note that the input should be a directory where you can have multiple peptide files, for a test you can use the Peptides and Read_pep from this dataset.
 
 ### TOV+POV peptides:
 
