@@ -3,13 +3,17 @@
 set -u
 
 if [[ $# != 3 ]]; then
-  printf "Usage: %s FASTA_DIR CLUSTER_FILD OUT_DIR\n" $(basename $0)
+  printf "Usage: %s FASTA_DIR CLUSTER_FILE OUT_DIR\n" $(basename $0)
   exit
 fi
 
 IN_DIR=$1
 CLUSTER_FILE=$2
 OUT_DIR=$3
+OVERWRITE=""
+if [[ -z ${FORCE:-""} ]]; then
+  OVERWRITE=1
+fi
 
 #
 # Set up env
@@ -26,12 +30,16 @@ fi
 BIN="$( readlink -f -- "${0%/*}" )"
 PATH=$BIN/../bin:$PATH
 
-
 #
 # Check args
 #
 if [[ ! -d $IN_DIR ]]; then
   echo IN_DIR \"$IN_DIR\" does not exist.
+  exit
+fi
+
+if [[ ! -s $CLUSTER_FILE ]]; then
+  echo Bad CLUSTER_FILE \"$CLUSTER_FILE\" 
   exit
 fi
 
@@ -42,10 +50,10 @@ fi
 #
 # Put all the incoming sequences into one file
 #
-PROTEINS_FILE="$OUT_DIR/compiled_proteins.fa"
+SEQUENCES_FILE="$OUT_DIR/compiled_sequences.fa"
 
-if [[ -e $PROTEINS_FILE ]]; then
-  rm $PROTEINS_FILE
+if [[ -e $SEQUENCES_FILE ]]; then
+  rm $SEQUENCES_FILE
 fi
 
 FILES_LIST=$OUT_DIR/files_list
@@ -56,58 +64,81 @@ echo NUM_FILES \"$NUM_FILES\"
 if [ $NUM_FILES -gt 0 ]; then
   for FILE in $(cat $FILES_LIST); do
     echo Compiling $FILE
-    cat $FILE >> $PROTEINS_FILE
+    cat $FILE >> $SEQUENCES_FILE
   done
 else
   echo Found no files in \"$IN_DIR\"
   exit
 fi
 
+if [[ ! -s $SEQUENCES_FILE ]]; then
+  echo Empty SEQUENCES_FILE \"$SEQUENCES_FILE\"
+  exit
+fi
+
 #
 # Run cd-hit-2d
+# It will create a "clstr" file of those that did cluster 
+# and the -o "novel" file of those that didn't -- this is
+# the file we want to self-cluster with cd-hit
 #
 CD_HIT_2D_IDEN="0.6"
 CD_HIT_2D_COV="0.8"
 CD_HIT_2D_OPTS="-g 1 -n 4 -d 0 -T 24 -M 45000"
-CD_HIT_2D_OUT_DIR="$OUT_DIR/cd-hit-2d"
+CD_HIT_2D_OUT_DIR="$OUT_DIR/cdhit-2d-outdir"
+CD_HIT_2D_NOVEL="$CD_HIT_2D_OUT_DIR/novel.fa"
 
-if [[ -d $CD_HIT_2D_OUT_DIR ]]; then
-  rm -rf $CD_HIT_2D_OUT_DIR/*
-else
+if [[ ! -d $CD_HIT_2D_OUT_DIR ]]; then
   mkdir -p $CD_HIT_2D_OUT_DIR
 fi
 
-# run cdhit
-echo Running cd-hit-2d
-cd-hit-2d -i $CLUSTER_FILE -i2 $PROTEINS_FILE \
-  -o $CD_HIT_2D_OUT_DIR -c $CD_HIT_2D_IDEN -aS $CD_HIT_2D_COV $CD_HIT_2D_OPTS
-
-#
-# Run cd-hit
-#
-CD_HIT_OUT_DIR="$OUT_DIR/cd-hit"
-
-if [[ -d $CD_HIT_OUT_DIR ]]; then
-  rm -rf $CD_HIT_OUT_DIR/*
+if [[ -s $CD_HIT_2D_NOVEL ]] && [[ $OVERWRITE -eq 1 ]]; then
+  echo CD_HIT_2D_NOVEL \"$CD_HIT_2D_NOVEL\" exists already.
 else
-  mkdir -p $CD_HIT_OUT_DIR
+  echo Running cd-hit-2d
+  cd-hit-2d -i $CLUSTER_FILE -i2 $SEQUENCES_FILE \
+  -o $CD_HIT_2D_NOVEL -c $CD_HIT_2D_IDEN -aS $CD_HIT_2D_COV $CD_HIT_2D_OPTS
 fi
 
+if [[ ! -s $CD_HIT_2D_NOVEL ]]; then
+  echo All sequences clustered.  Exiting.
+  exit
+fi
+
+#
+# Run cd-hit on the "novel" sequences
+#
 CD_HIT_IDEN="0.6"
 CD_HIT_COV="0.8"
 CD_HIT_OPTS="-g 1 -n 4 -d 0 -T 24 -M 45000"
+CD_HIT_OUT_DIR="$OUT_DIR/cdhit-outdir"
+CD_HIT_OUT_FILE="$CD_HIT_OUT_DIR/cdhit60"
 
-cd-hit -i $CD_HIT_2D_OUT_DIR -o $CD_HIT_OUT_DIR \
-  -c $CD_HIT_IDEN -aS $CD_HIT_COV $CD_HIT_OPTS
+if [[ ! -d $CD_HIT_OUT_DIR ]]; then
+  mkdir -p $CD_HIT_OUT_DIR
+fi
 
-# get 20+ id clusters and cluster to count FILE
-OUTCL="$CD_HIT_OUT_DIR/cdhit60.clstr"
-OUTFILE="$CD_HIT_OUT_DIR/cdhit60.id2cl"
+if [[ -s $CD_HIT_OUT_FILE ]] && [[ $OVERWRITE -eq 1 ]]; then
+  echo CD_HIT_OUT_FILE \"$CD_HIT_OUT_FILE\" exists already.
+else
+  echo Running cd-hit
+  cd-hit -i $CD_HIT_2D_NOVEL -o $CD_HIT_OUT_FILE \
+    -c $CD_HIT_IDEN -aS $CD_HIT_COV $CD_HIT_OPTS
+fi
 
-# create a list of ids that belong to the 20+ member clusters
-create_id_to_clst.pl $OUTCL $OUTFILE 
+#
+# Create a FASTA file of the representative sequences from 
+# clusters having more than 20 constituents
+#
+CD_HIT_CLUSTER_FILE="$CD_HIT_OUT_FILE.clstr"
 
-# create a fasta FILE with sequences from 20+ member clusters
-LIST="$OUTFILE"
-OUTFA="$OUTFILE.fa"
-get_list_from_fa.pl $INFILE $LIST $OUTFA  
+if [[ ! -s $CD_HIT_CLUSTER_FILE ]]; then
+  echo CD_HIT_CLUSTER_FILE \"$CD_HIT_CLUSTER_FILE\" is empty?
+  echo No cluster file from cd-hit.
+  exit
+fi
+
+MIN_SEQS=5
+NOVEL_FA="$OUT_DIR/novel.fa"
+$BIN/fa_from_clusters.pl --cluster_file $CD_HIT_CLUSTER_FILE \
+  --sequence_file $SEQUENCES_FILE -n $MIN_SEQS -o $NOVEL_FA
