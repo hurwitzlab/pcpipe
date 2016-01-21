@@ -36,9 +36,13 @@ it under the same terms as Perl itself.
 use strict;
 use warnings;
 use autodie;
+use File::Basename 'basename';
 
-my $in  = shift or die "No input.\n";
-my $out = shift or die "No output.\n";
+unless (@ARGV == 2) {
+    die sprintf("Usage: %s INFILE OUTFILE\n", basename($0));
+}
+
+my ($in, $out) = @ARGV;
 
 open my $IN,  '<', $in;
 open my $OUT, '>', $out;
@@ -68,7 +72,6 @@ for my $c (
     sort { $cluster_to_count{$b} <=> $cluster_to_count{$a} }
     keys %cluster_to_count 
 ) {
-    my $size = @{ $cluster_to_count{$c} };
     for my $cl ( @{ $cluster_to_count{$c} } ) {
         $cl =~ s/.*>//;
         $cl =~ s/\..*//;
