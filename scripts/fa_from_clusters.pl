@@ -27,6 +27,7 @@ sub main {
     my $output_file   = $args->{'output_file'} || basename($0) . '.out';
     my $num           = $args->{'number'} || 1;
     my $clusters      = get_clusters($args->{'cluster_file'});
+    my ($avg, $max)   = average_max(map { $_->{'count'} } values %$clusters);
 
     my %seqs = 
         map  { $_->{'rep'}, 1 }
@@ -35,6 +36,9 @@ sub main {
 
     my $n_seqs = scalar(keys %seqs);
     if ($n_seqs == 0) {
+        printf "Cluster file (%s) contained nothing above %s\n", 
+            $args->{'cluster_file'}, $num;
+
         die "No clusters passed muster.\n";
     }
 
@@ -64,7 +68,8 @@ sub main {
         }
     }
 
-    say "Checked $n_checked, took $n_took, see '$output_file'";
+    say "Checked $n_checked, $n_took were >= $num (avg = $avg, max = $max)";
+    say "See '$output_file'";
 }
 
 # --------------------------------------------------
@@ -111,6 +116,14 @@ sub get_args {
     ) or pod2usage(2);
 
     return \%args;
+}
+
+# --------------------------------------------------
+sub average_max {
+    my @numbers = @_ or return 0;
+    my ($total, $max) = (0, 0);
+    map { $total += $_; $max = $_ if $_ > $max } @numbers;
+    return (int($total / scalar(@numbers)), $max);
 }
 
 __END__
