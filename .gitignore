@@ -21,3 +21,4 @@ nytprof.out
 bin
 out
 *.swp
+*.out

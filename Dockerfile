@@ -14,4 +14,4 @@ COPY scripts /usr/local/bin/pcpipe/
 
 ENV PATH=$PATH:/usr/local/bin/pcpipe
 
-#ENTRYPOINT ["pcpipe"]
+ENTRYPOINT ["pcpipe"]
