@@ -8,6 +8,8 @@ RUN cpanm --force Capture::Tiny
 
 RUN cpanm --force BioPerl
 
+RUN cpanm Readonly
+
 COPY bin /usr/local/bin/
 
 COPY scripts /usr/local/bin/pcpipe/

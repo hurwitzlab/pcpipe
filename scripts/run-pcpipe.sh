@@ -1,39 +1,97 @@
 #!/bin/bash
 
-set -u
-
-if [[ $# != 3 ]]; then
-  printf "Usage: %s FASTA_DIR CLUSTER_FILE OUT_DIR\n" $(basename $0)
-  exit
-fi
-
-IN_DIR=$1
-CLUSTER_FILE=$2
-OUT_DIR=$3
-MIN_CLUSTER_SIZE=${4:-2}
-BIN="$( readlink -f -- "$( dirname -- "$0" )" )"
-NUM_CPU=${NUM_CPU:-4}
-SIMAP_BLAST_DB=${BLAST_DB:-/data/simap/simap}
-SIMAP_ANNOTATION_DB_DIR=${SIMAP_ANNOTATION_DB_DIR:-/usr/local/imicrobe/simap/features/db}
-
-OVERWRITE=0
-if [[ ${FORCE:-0} -gt 0 ]]; then
-  OVERWRITE=1
-fi
-
 #
-# Set up env
+# Run the PCPipe analysis
+# Authors: 
+#  Bonnie Hurwitz <bhurwitz@email.arizona.edu>
+#  Ken Youens-Clark <kyclark@email.arizona.edu>
 #
+
+CWD=$PWD
 BIN="$( readlink -f -- "${0%/*}" )"
 PATH=$BIN/../bin:$PATH
-COMMON=$BIN/common.sh
+IN_DIR=""
+CLUSTER_FILE=""
+PROG_NAME=$(basename $0 '.sh')
+OUT_DIR="$PWD/$PROG_NAME"
+MIN_CLUSTER_SIZE=2
+NUM_CPU=4
+SIMAP_BLAST_DB=/data/simap/simap
+SIMAP_ANNOTATION_DB_DIR=/usr/local/imicrobe/simap/features/db
+OVERWRITE=0
 
-if [[ -e $COMMON ]]; then
-  source $COMMON
-else
-  echo Cannot find \"$COMMON\"
+function HELP() {
+  printf "Usage:\n  %s -d FASTA_DIR -c CLUSTER_FILE\n\n" \
+    $(basename $0)
+  echo "Options: "
+  echo " -a SIMAP_ANNOTATION_DB_DIR ($SIMAP_ANNOTATION_DB_DIR)"
+  echo " -b SIMAP_BLAST_DB ($SIMAP_BLAST_DB)"
+  echo " -n NUM_CPU ($NUM_CPU)"
+  echo " -o OUT_DIR ($OUT_DIR)"
+  echo " -s MIN_CLUSTER_SIZE ($MIN_CLUSTER_SIZE)"
+  echo " -x OVERWRITE ($OVERWRITE)"
   exit
+}
+
+function lc() {
+    wc -l $1 | cut -d ' ' -f 1
+}
+
+if [[ $# == 0 ]]; then
+  HELP
 fi
+
+while getopts :a:b:c:d:hn:o:s:x OPT; do
+  case $OPT in
+    a)
+      SIMAP_ANNOTATION_DB_DIR="$OPTARG"
+      ;;
+    b)
+      SIMAP_BLAST_DB="$OPTARG"
+      ;;
+    c)
+      CLUSTER_FILE="$OPTARG"
+      ;;
+    d)
+      IN_DIR="$OPTARG"
+      ;;
+    h)
+      HELP
+      ;;
+    n)
+      NUM_CPU="$OPTARG"
+      ;;
+    o)
+      OUT_DIR="$OPTARG"
+      ;;
+    s)
+      MIN_CLUSTER_SIZE="$OPTARG"
+      ;;
+    x)
+      OVERWRITE=1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+    \?)
+      echo "Invalid option: -${OPTARG:-""}"
+      exit 1
+  esac
+done
+
+shift $((OPTIND-1))
+
+set -u
+
+echo IN_DIR=\"$IN_DIR\"
+echo CLUSTER_FILE=\"$CLUSTER_FILE\"
+echo OUT_DIR=\"$OUT_DIR\"
+echo MIN_CLUSTER_SIZE=\"$MIN_CLUSTER_SIZE\"
+echo NUM_CPU=\"$NUM_CPU\"
+echo SIMAP_BLAST_DB=\"$SIMAP_BLAST_DB\"
+echo SIMAP_ANNOTATION_DB_DIR=\"$SIMAP_ANNOTATION_DB_DIR\"
+echo OVERWRITE=\"$OVERWRITE\"
 
 #
 # Check args
