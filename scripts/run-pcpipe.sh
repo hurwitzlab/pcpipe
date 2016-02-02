@@ -12,7 +12,9 @@ CLUSTER_FILE=$2
 OUT_DIR=$3
 MIN_CLUSTER_SIZE=${4:-2}
 BIN="$( readlink -f -- "$( dirname -- "$0" )" )"
-NUM_CPU=23
+NUM_CPU=${NUM_CPU:-4}
+SIMAP_BLAST_DB=${BLAST_DB:-/data/simap/simap}
+SIMAP_ANNOTATION_DB_DIR=${SIMAP_ANNOTATION_DB_DIR:-/usr/local/imicrobe/simap/features/db}
 
 OVERWRITE=0
 if [[ ${FORCE:-0} -gt 0 ]]; then
@@ -22,7 +24,9 @@ fi
 #
 # Set up env
 #
-COMMON=common.sh
+BIN="$( readlink -f -- "${0%/*}" )"
+PATH=$BIN/../bin:$PATH
+COMMON=$BIN/common.sh
 
 if [[ -e $COMMON ]]; then
   source $COMMON
@@ -30,9 +34,6 @@ else
   echo Cannot find \"$COMMON\"
   exit
 fi
-
-BIN="$( readlink -f -- "${0%/*}" )"
-PATH=$BIN/../bin:$PATH
 
 #
 # Check args
@@ -100,8 +101,13 @@ if [[ -s $CD_HIT_2D_NOVEL ]] && [[ $OVERWRITE -eq 0 ]]; then
   echo CD_HIT_2D_NOVEL \"$CD_HIT_2D_NOVEL\" exists already.
 else
   echo Running cd-hit-2d
-  cd-hit-2d -i $CLUSTER_FILE -i2 $SEQUENCES_FILE \
-  -o $CD_HIT_2D_NOVEL -c $CD_HIT_2D_IDEN -aS $CD_HIT_2D_COV $CD_HIT_2D_OPTS
+  cd-hit-2d \
+    -i  $CLUSTER_FILE \
+    -i2 $SEQUENCES_FILE \
+    -o  $CD_HIT_2D_NOVEL \
+    -c  $CD_HIT_2D_IDEN \
+    -aS $CD_HIT_2D_COV \
+    $CD_HIT_2D_OPTS
 fi
 
 if [[ ! -s $CD_HIT_2D_NOVEL ]]; then
@@ -126,8 +132,12 @@ if [[ -s $CD_HIT_OUT_FILE ]] && [[ $OVERWRITE -eq 0 ]]; then
   echo CD_HIT_OUT_FILE \"$CD_HIT_OUT_FILE\" exists already.
 else
   echo Running cd-hit
-  cd-hit -i $CD_HIT_2D_NOVEL -o $CD_HIT_OUT_FILE \
-    -c $CD_HIT_IDEN -aS $CD_HIT_COV $CD_HIT_OPTS
+  cd-hit \
+    -i  $CD_HIT_2D_NOVEL \
+    -o  $CD_HIT_OUT_FILE \
+    -c  $CD_HIT_IDEN \
+    -aS $CD_HIT_COV \
+    $CD_HIT_OPTS
 fi
 
 #
@@ -143,20 +153,41 @@ if [[ ! -s $CD_HIT_CLUSTER_FILE ]]; then
 fi
 
 NOVEL_FA="$OUT_DIR/novel.fa"
-$BIN/fa_from_clusters.pl --cluster_file $CD_HIT_CLUSTER_FILE \
-  --sequence_file $SEQUENCES_FILE -n $MIN_CLUSTER_SIZE -o $NOVEL_FA
+$BIN/fa_from_clusters.pl \
+  --cluster_file  $CD_HIT_CLUSTER_FILE \
+  --sequence_file $SEQUENCES_FILE \
+  -n              $MIN_CLUSTER_SIZE \
+  -o              $NOVEL_FA
+
 echo New cluster file \"$NOVEL_FA\"
 
 BLAST_OUT=$OUT_DIR/blast.out
-SIMAP_BLAST_DB=/data/kyclark/simap/simap
 echo BLASTing to \"$SIMAP_BLAST_DB\"
-$BIN/../bin/blastp \
+
+if [[ ! -e $BLAST_OUT ]]; then
+blastp \
   -query $NOVEL_FA \
   -out $BLAST_OUT \
+  -outfmt 6 \
   -db $SIMAP_BLAST_DB \
   -num_alignments 10 \
   -num_descriptions 10 \
   -evalue 1 \
   -num_threads $NUM_CPU
+fi
 
-echo See BLAST_OUT \"$BLAST_OUT\"
+if [[ ! -s $BLAST_OUT ]]; then
+  echo Nothing returned from BLAST, exiting.
+  exit
+fi
+
+echo BLAST_OUT \"$BLAST_OUT\"
+
+ANNOT_FILE=$OUT_DIR/simap-annotations.tab
+
+$BIN/annotate-blast.pl \
+  --blast  $BLAST_OUT \
+  --db_dir $SIMAP_ANNOTATION_DB_DIR \
+  --out    $ANNOT_FILE
+
+echo ANNOTATION_FILE \"$ANNOT_FILE\"

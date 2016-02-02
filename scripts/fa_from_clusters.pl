@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
 
-use common::sense;
+use strict;
+use feature 'say';
 use autodie;
 use Bio::SeqIO;
-use Data::Dump 'dump';
 use Getopt::Long;
 use File::Basename 'basename';
 use Pod::Usage;
