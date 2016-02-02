@@ -121,18 +121,19 @@ fi
 
 FILES_LIST=$OUT_DIR/files_list
 find $IN_DIR -maxdepth 1 -mindepth 1 -type f > $FILES_LIST
-NUM_FILES=$(lc $FILES_LIST)
-echo NUM_FILES \"$NUM_FILES\"
 
-if [ $NUM_FILES -gt 0 ]; then
-  for FILE in $(cat $FILES_LIST); do
-    echo Compiling $FILE
-    cat $FILE >> $SEQUENCES_FILE
-  done
-else
+NUM_FILES=$(lc $FILES_LIST)
+echo Found \"$NUM_FILES\" files in \"$IN_DIR\"
+
+if [ $NUM_FILES -lt 1 ]; then
   echo Found no files in \"$IN_DIR\"
   exit
 fi
+
+for FILE in $(cat $FILES_LIST); do
+  echo Compiling $FILE
+  cat $FILE >> $SEQUENCES_FILE
+done
 
 if [[ ! -s $SEQUENCES_FILE ]]; then
   echo Empty SEQUENCES_FILE \"$SEQUENCES_FILE\"
@@ -222,7 +223,6 @@ echo New cluster file \"$NOVEL_FA\"
 BLAST_OUT=$OUT_DIR/blast.out
 echo BLASTing to \"$SIMAP_BLAST_DB\"
 
-if [[ ! -e $BLAST_OUT ]]; then
 blastp \
   -query $NOVEL_FA \
   -out $BLAST_OUT \
@@ -232,7 +232,6 @@ blastp \
   -num_descriptions 10 \
   -evalue 1 \
   -num_threads $NUM_CPU
-fi
 
 if [[ ! -s $BLAST_OUT ]]; then
   echo Nothing returned from BLAST, exiting.
