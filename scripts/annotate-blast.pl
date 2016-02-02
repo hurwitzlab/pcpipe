@@ -3,7 +3,6 @@
 use strict;
 use feature 'say';
 use autodie;
-use Data::Dump 'dump';
 use DBI;
 use Getopt::Long;
 use File::Find::Rule;
@@ -71,7 +70,7 @@ sub main {
     my ($n_checked, $n_annot) = (0, 0);
     while (my $r = $p->fetchrow_hashref) {
         my $feature_id = $r->{'sseqid'} or next;
-        printf "%5d: %s\n", ++$n_checked, $feature_id;
+        $n_checked++;
 
         for my $dbh (@dbhs) {
             for my $simap (

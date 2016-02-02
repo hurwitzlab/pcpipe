@@ -8,6 +8,14 @@ RUN cpanm --force Capture::Tiny
 
 RUN cpanm --force BioPerl
 
+RUN cpanm DBI
+
+RUN cpanm DBD::SQLite
+
+RUN cpanm Text::RecordParser
+
+RUN cpanm File::Find::Rule
+
 RUN cpanm Readonly
 
 COPY bin /usr/local/bin/

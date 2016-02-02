@@ -23,6 +23,11 @@ OVERWRITE=0
 function HELP() {
   printf "Usage:\n  %s -d FASTA_DIR -c CLUSTER_FILE\n\n" \
     $(basename $0)
+  
+  echo "Required arguments:"
+  echo " -d FASTA_DIR (sequence files to screen)"
+  echo " -c CLUSTER_FILE (existing cluster file to screen against)"
+  echo
   echo "Options: "
   echo " -a SIMAP_ANNOTATION_DB_DIR ($SIMAP_ANNOTATION_DB_DIR)"
   echo " -b SIMAP_BLAST_DB ($SIMAP_BLAST_DB)"
@@ -223,7 +228,10 @@ echo New cluster file \"$NOVEL_FA\"
 BLAST_OUT=$OUT_DIR/blast.out
 echo BLASTing to \"$SIMAP_BLAST_DB\"
 
-blastp \
+if [[ -s $BLAST_OUT ]]; then
+  $BLAST_OUT already exists
+else 
+  blastp \
   -query $NOVEL_FA \
   -out $BLAST_OUT \
   -outfmt 6 \
@@ -232,6 +240,7 @@ blastp \
   -num_descriptions 10 \
   -evalue 1 \
   -num_threads $NUM_CPU
+fi
 
 if [[ ! -s $BLAST_OUT ]]; then
   echo Nothing returned from BLAST, exiting.
