@@ -111,6 +111,11 @@ if [[ ! -s $CLUSTER_FILE ]]; then
   exit
 fi
 
+if [[ $MIN_CLUSTER_SIZE -lt 2 ]]; then
+  echo MIN_CLUSTER_SIZE cannot be less than 2
+  exit
+fi
+
 if [[ ! -d $OUT_DIR ]]; then
   mkdir -p $OUT_DIR
 fi
