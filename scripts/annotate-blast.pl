@@ -65,18 +65,22 @@ sub main {
     $p->bind_fields(@BLAST_FLDS);
     my $sql = 'select * from feature where feature_id=?';
 
-    say $out_fh join("\t", @OUT_FLDS);
+    say $out_fh join("\t", 'protein_id', @OUT_FLDS);
 
     my ($n_checked, $n_annot) = (0, 0);
     while (my $r = $p->fetchrow_hashref) {
         my $feature_id = $r->{'sseqid'} or next;
+
         $n_checked++;
 
         for my $dbh (@dbhs) {
             for my $simap (
               @{$dbh->selectall_arrayref($sql, { Columns => {} }, $feature_id)}
             ) {
-                say $out_fh join("\t", map { $simap->{$_} // '' } @OUT_FLDS);
+                say $out_fh join("\t", 
+                    $r->{'qseqid'},
+                    (map { $simap->{$_} // '' } @OUT_FLDS)
+                );
                 $n_annot++;
             }
         }
